@@ -5,6 +5,7 @@ var fs = require("fs");
 var mime = require("mime");
 var Util = require("./util");
 var Url = require("url");
+var Promise = require("./promise");
 
 /** section: github
  * class Client
@@ -178,6 +179,7 @@ var Client = module.exports = function(config) {
     config.headers = config.headers || {};
     this.config = config;
     this.debug = Util.isTrue(config.debug);
+    this.Promise = config.Promise || config.promise || Promise;
 
     this.version = config.version;
     var cls;
@@ -370,8 +372,25 @@ var Client = module.exports = function(config) {
                             // on error, there's no need to continue.
                             return;
                         }
+                        if (!callback){
+                            if (self.Promise) {
+                                return new self.Promise(function(resolve,reject){
+                                    var cb = function(err, obj){
+                                        if (err){
+                                            reject(err);
+                                        } else {
+                                            resolve(obj);
+                                        }
+                                    };
+                                    api[section][funcName].call(api, msg, block, cb);
+                                });
+                            } else {
+                                throw new Error('neither a callback or global promise implementation was provided');
+                            }
+                        } else {
+                            api[section][funcName].call(api, msg, block, callback);
+                        }
 
-                        api[section][funcName].call(api, msg, block, callback);
                     };
                 }
                 else {
